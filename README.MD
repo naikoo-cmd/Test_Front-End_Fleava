@@ -21,7 +21,7 @@ You can run and test this project locally by following the instructions below.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/naikoo-cmd/testing_FE_Fleava.git
+git clone https://github.com/naikoo-cmd/Test_Front-End_Fleava
 cd testing_FE_Fleava
 ```
 

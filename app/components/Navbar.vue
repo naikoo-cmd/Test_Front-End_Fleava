@@ -3,7 +3,6 @@
     <div class="navbar__inner">
       <NuxtLink class="brand" to="/" style="font-size: 2rem;">Movies Media</NuxtLink>
       <div class="spacer" />
-      <!-- removed theme toggle button -->
     </div>
   </nav>
 </template>
@@ -31,6 +30,3 @@ onUnmounted(() => {
 })
 </script>
 
-<style>
-/* Removed: html transition for theme switching and .theme-toggle styles */
-</style>

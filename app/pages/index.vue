@@ -2,7 +2,8 @@
   <div>
     <!-- Full-width Hero Slideshow -->
     <section class="hero" v-if="!error">
-      <div v-if="pending" class="hero__skeleton skeleton"></div>
+      <!-- Animate hero skeleton for smoother loading feedback -->
+      <div v-if="pending" class="hero__skeleton skeleton animate-pulse"></div>
 
       <div
         v-else
@@ -12,7 +13,7 @@
         @mouseenter="pause"
         @mouseleave="resume"
       >
-        <transition name="hero-fade" mode="out-in" v-if="currentMovie">
+        <transition name="hero-fade" mode="out-in" appear v-if="currentMovie">
           <div
             class="hero__slide"
             :key="currentMovie?.id"
@@ -49,16 +50,32 @@
             <p>Browse the latest trending picks</p>
           </div>
           <div class="category-tabs">
-            <button class="link" :class="{ 'is-active': selectedCategory === 'popular' }" @click="setCategory('popular')">
+            <button class="link" :class="tabClass('popular')" @click="setCategory('popular')">
               Popular
             </button>
-            <button class="link" :class="{ 'is-active': selectedCategory === 'upcoming' }" @click="setCategory('upcoming')">
+            <button class="link" :class="tabClass('upcoming')" @click="setCategory('upcoming')">
               Upcoming
             </button>
-            <button class="link" :class="{ 'is-active': selectedCategory === 'top_rated' }" @click="setCategory('top_rated')">
+            <button class="link" :class="tabClass('top_rated')" @click="setCategory('top_rated')">
               Top Rated
             </button>
           </div>
+        </div>
+
+        <!-- NEW: per-page selector aligned with tabs -->
+        <div class="perpage">
+          <label class="perpage__label" for="perpage-select">Per page</label>
+          <select
+            id="perpage-select"
+            name="per_page"
+            v-model.number="perPage"
+            class="perpage__select link"
+            aria-label="Items per page"
+          >
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="30">30</option>
+          </select>
         </div>
       </header>
 
@@ -66,7 +83,8 @@
       <transition name="list-fade" mode="out-in">
         <template v-if="pending">
           <div class="grid">
-            <div v-for="n in 8" :key="n" class="card skeleton"></div>
+            <!-- Add Tailwind pulse animation to skeleton cards -->
+            <div v-for="n in 8" :key="n" class="card skeleton animate-pulse"></div>
           </div>
         </template>
         <template v-else-if="error">
@@ -75,7 +93,7 @@
           </div>
         </template>
         <template v-else>
-          <div class="grid" :key="selectedCategory">
+          <div class="grid" :key="`${selectedCategory}-${perPage}-${page}`">
             <MovieCard
               v-for="movie in displayedMovies"
               :key="movie.id"
@@ -86,10 +104,34 @@
         </template>
       </transition>
 
-      <div v-if="!pending && !error" class="load-more" v-animate>
-        <div v-show="!noMore" ref="infiniteSentinel" class="infinite-sentinel" aria-hidden="true"></div>
-        <p v-if="noMore" class="end-hint">No more movies</p>
+      <!-- Skeleton placeholders shown only during incremental fetch (outside Transition to keep single child) -->
+      <div v-if="loadingMore" class="grid">
+        <div v-for="n in 5" :key="'load-skel-'+n" class="card">
+          <div class="card__media rounded-lg bg-gray-800 animate-pulse"></div>
+        </div>
       </div>
+
+      <!-- numbered pagination controls -->
+      <nav v-if="!pending && !error && totalPagesVirtual > 1" class="pager" v-animate aria-label="Pagination">
+        <button class="link pager__btn" :disabled="page <= 1" @click="page = Math.max(1, page - 1)">Prev</button>
+
+        <ul class="pager__list" role="list">
+          <li v-for="p in pageButtons" :key="p.key">
+            <button
+              v-if="p.type === 'page'"
+              class="link pager__page"
+              :class="{ 'is-active': page === p.num }"
+              @click="p.num !== undefined && (page = p.num)"
+              :aria-current="page === p.num ? 'page' : undefined"
+            >
+              {{ p.num }}
+            </button>
+            <span v-else class="pager__dots" aria-hidden="true">…</span>
+          </li>
+        </ul>
+
+        <button class="link pager__btn" :disabled="page >= totalPagesVirtual" @click="page = Math.min(totalPagesVirtual, page + 1)">Next</button>
+      </nav>
     </section>
   </div>
 </template>
@@ -114,27 +156,11 @@ type PopularResponse = {
   results: Movie[]
 }
 
-const { data, pending, error } = await useAsyncData('popular', () =>
-  $fetch<PopularResponse>('/api/movies/popular', { query: { page: 1 } })
-)
+// Hoisted state (must exist before top-level await for SSR/Suspense safety)
+const perPage = ref(20)       // 10 | 20 | 30
+const page = ref(1)           // current virtual page (based on perPage)
+const loadingMore = ref(false) // loading indicator for virtual page fetches
 
-/**
- * PAGINATION STATE FOR GRID (5-at-a-time), 
- */
-const CHUNK = 5
-const MAX = Infinity 
-
-const fetchedMovies = ref<Movie[]>([])
-const displayedMovies = ref<Movie[]>([])
-const nextIndex = ref(0)
-const currentPage = ref(1)
-const totalPages = ref(1)
-const loadingMore = ref(false)
-const ids = ref<Set<number>>(new Set())
-
-/**
- * Category state (grid only; hero remains Popular
- */
 type Category = 'popular' | 'upcoming' | 'top_rated'
 const selectedCategory = ref<Category>('popular')
 const categoryLabel = computed(() => {
@@ -149,155 +175,114 @@ function setCategory(cat: Category) {
   selectedCategory.value = cat
 }
 
+// Data shown in the grid
+const displayedMovies = ref<Movie[]>([])
+
+const { data, pending, error } = await useAsyncData('popular', () =>
+  $fetch<PopularResponse>('/api/movies/popular', { query: { page: 1 } })
+)
+
 /**
- * Initialize from first response:
- * - Seed buffer with results from page 1
- * - Append first up-to-5 (respecting MAX)
+ * NEW: pagination state (continued)
  */
+const totalResults = ref(0)   // from TMDb API (first response)
+const totalTmdbPages = ref(1) // TMDb total pages (20 items per page)
+
+
 watch(
   () => data.value,
   async (val) => {
     if (!val) return
     const res = val as PopularResponse
-    fetchedMovies.value = [...(res.results || [])]
-    currentPage.value = res.page
-    totalPages.value = res.total_pages
-
-    displayedMovies.value = []
-    ids.value.clear()
-    nextIndex.value = 0
-    await appendChunk(CHUNK)
+    displayedMovies.value = [...(res.results || [])]
+    totalResults.value = res.total_results
+    totalTmdbPages.value = res.total_pages
   },
   { immediate: true }
 )
 
-// Fetch one page for the current category (server route should proxy category/page)
-async function fetchCategoryPage(page: number) {
+// Helper: fetch a TMDb page (20 results) 
+async function fetchCategoryPage(pageNum: number) {
+  const cap = (totalTmdbPages.value && totalTmdbPages.value > 0) ? totalTmdbPages.value : 500
+  const safe = Math.max(1, Math.min(pageNum, cap))
   return await $fetch<PopularResponse>('/api/movies/popular', {
-    query: { page, category: selectedCategory.value }
+    query: { page: safe, category: selectedCategory.value }
   })
 }
 
-// Reset and load first chunk for current category
-async function initCategory() {
-  displayedMovies.value = []
-  fetchedMovies.value = []
-  ids.value.clear()
-  nextIndex.value = 0
-  loadingMore.value = false
-  // page 1
-  const res = await fetchCategoryPage(1)
-  currentPage.value = res.page
-  totalPages.value = res.total_pages
-  if (Array.isArray(res.results)) fetchedMovies.value.push(...res.results)
-  await appendChunk(CHUNK)
-}
-// Run on category change (and once on mount)
-watch(selectedCategory, () => { initCategory() }, { immediate: true })
-
-
-const noMore = computed(() => {
-  if (displayedMovies.value.length >= MAX) return true
-  const bufferExhausted = nextIndex.value >= fetchedMovies.value.length
-  const pagesExhausted = currentPage.value >= totalPages.value
-  return bufferExhausted && pagesExhausted
-})
-
-
-function appendFromBuffer(limit: number): number {
-  if (displayedMovies.value.length >= MAX) return 0
-  let capacity = MAX - displayedMovies.value.length
-  let toTake = Math.min(limit, capacity)
-
-  let added = 0
-  while (added < toTake && nextIndex.value < fetchedMovies.value.length) {
-    const m = fetchedMovies.value[nextIndex.value++]
-    if (!m) continue
-    if (ids.value.has(m.id)) continue // avoid duplicates across pages
-    ids.value.add(m.id)
-    displayedMovies.value.push(m)
-    added++
-  }
-  return added
-}
-
-
-async function fetchNextPage() {
-  if (displayedMovies.value.length >= MAX) return 0
-  if (currentPage.value >= totalPages.value) return 0
-
-  const next = currentPage.value + 1
-  const before = fetchedMovies.value.length
-  const res = await fetchCategoryPage(next)
-
-  currentPage.value = res.page
-  totalPages.value = res.total_pages
-  if (Array.isArray(res.results) && res.results.length) {
-    fetchedMovies.value.push(...res.results)
-  }
-
-  return fetchedMovies.value.length - before
-}
-
-
-async function appendChunk(count: number) {
-  if (displayedMovies.value.length >= MAX) return
-
-  let need = Math.min(count, MAX - displayedMovies.value.length)
-
-  while (need > 0) {
-    const added = appendFromBuffer(need)
-    need -= added
-
-    if (need <= 0) break
-
-    if (currentPage.value < totalPages.value && displayedMovies.value.length < MAX) {
-      const grown = await fetchNextPage()
-      if (!grown) break
-      continue
-    }
-
-    break
-  }
-}
-
-
-async function onLoadMore() {
-  if (loadingMore.value || noMore.value || displayedMovies.value.length >= MAX) return
+//  size perPage by aggregating TMDb pages (20 per page)
+async function fetchVirtualPage() {
   loadingMore.value = true
   try {
-    await appendChunk(CHUNK)
+    const start = (page.value - 1) * perPage.value
+    const tmdbPageStart = Math.floor(start / 20) + 1
+    const offset = start % 20
+    const need = perPage.value
+    const neededTmdbPages = Math.ceil((offset + need) / 20)
+
+    const pagesToFetch = Array.from({ length: neededTmdbPages }, (_, i) => tmdbPageStart + i)
+  // Clamp to TMDb available page range (TMDb caps pages at 500 for list endpoints)
+  const maxTmdb = (totalTmdbPages.value && totalTmdbPages.value > 0) ? totalTmdbPages.value : 500
+    const safePages = pagesToFetch
+      .map(p => Math.min(Math.max(1, p), maxTmdb))
+      .filter((p, idx, arr) => arr.indexOf(p) === idx) // dedupe after clamping
+
+    const responses = await Promise.all(safePages.map(p => fetchCategoryPage(p)))
+    // Update totals from the first response (accurate for the category)
+    if (responses[0]) {
+      totalResults.value = responses[0].total_results
+      totalTmdbPages.value = responses[0].total_pages
+    }
+
+    const combined = responses.flatMap(r => r.results || [])
+    displayedMovies.value = combined.slice(offset, offset + need)
   } finally {
     loadingMore.value = false
   }
 }
 
-const infiniteSentinel = ref<HTMLElement | null>(null)
-let io: IntersectionObserver | null = null
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
+// total virtual pages based on perPage, capped to TMDb retrievable results (totalTmdbPages * 20)
+const totalPagesVirtual = computed(() => {
+  const retrievable = Math.max(0, Math.min(totalResults.value || 0, (totalTmdbPages.value || 1) * 20))
+  return Math.max(1, Math.ceil(retrievable / perPage.value))
+})
 
-function setupInfiniteScroll() {
-  if (!infiniteSentinel.value) return
-  io = new IntersectionObserver((entries) => {
-    const [entry] = entries
-    if (!entry?.isIntersecting) return
-    if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(async () => {
-      if (loadingMore.value || pending.value || noMore.value) return
-      loadingMore.value = true
-      try {
-        await appendChunk(CHUNK)
-      } finally {
-        loadingMore.value = false
-      }
-    }, 150)
-  }, { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0 })
-  io.observe(infiniteSentinel.value)
-}
+// Keep current page within bounds when totals or perPage change
+watch(totalPagesVirtual, (tp) => {
+  if (page.value > tp) page.value = tp
+  if (page.value < 1) page.value = 1
+})
 
-onMounted(setupInfiniteScroll)
-onBeforeUnmount(() => { io?.disconnect(); io = null; if (debounceTimer) clearTimeout(debounceTimer) })
+// limited page buttons with ellipsis for large totals
+const pageButtons = computed(() => {
+  const tp = totalPagesVirtual.value
+  const cur = page.value
+  const max = 5
+  let start = Math.max(1, cur - 2)
+  let end = Math.min(tp, start + max - 1)
+  start = Math.max(1, end - max + 1)
+  const out: Array<{ type: 'page' | 'dots'; key: string; num?: number }> = []
 
+  if (start > 1) {
+    out.push({ type: 'page', key: 'p1', num: 1 })
+    if (start > 2) out.push({ type: 'dots', key: 'd1' })
+  }
+  for (let i = start; i <= end; i++) out.push({ type: 'page', key: `p${i}`, num: i })
+  if (end < tp) {
+    if (end < tp - 1) out.push({ type: 'dots', key: 'd2' })
+    out.push({ type: 'page', key: `p${tp}`, num: tp })
+  }
+  return out
+})
+
+// when category or perPage changes, reset to page 1 and fetch
+watch([selectedCategory, perPage], () => {
+  page.value = 1
+  fetchVirtualPage()
+}, { immediate: true })
+
+//  when page changes, fetch that virtual page
+watch(page, () => { fetchVirtualPage() })
 
 const firstPageMovies = computed(() => (data.value?.results || []).slice(0, 10))
 const slides = computed(() => firstPageMovies.value.filter(m => m.backdrop_path || m.poster_path))
@@ -344,6 +329,13 @@ function year(d?: string) {
   return d ? new Date(d).getFullYear() : '—'
 }
 
+// Tailwind-powered active state helper for category tabs
+function tabClass(cat: 'popular' | 'upcoming' | 'top_rated') {
+  return selectedCategory.value === cat
+    ? 'text-white font-semibold border-b-2 border-cyan-400'
+    : 'text-gray-300 hover:text-white';
+}
+
 onMounted(start)
 onBeforeUnmount(stop)
 watch(slides, (val) => {
@@ -353,167 +345,4 @@ watch(slides, (val) => {
 })
 </script>
 
-<style scoped lang="scss">
-.hero {
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-  width: 100vw;
-
-  position: relative;
-  min-height: 100svh; 
-  height: 100svh;
-
-  // fallback for older browsers
-  @supports not (height: 100svh) {
-    min-height: 100vh;
-    height: 100vh;
-  }
-}
-
-.hero__skeleton { height: 100%; width: 100%; }
-.hero__inner { position: relative; height: 100%; }
-.hero__slide {
-  position: relative;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-}
-
-.hero__overlay {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.0) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.75) 100%),
-    radial-gradient(60% 60% at 20% 35%, rgba(0,0,0,0.45), rgba(0,0,0,0) 70%);
-  pointer-events: none;
-}
-
-.hero__content {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px 40px;
-  color: var(--text);
-  text-shadow: 0 2px 14px rgba(0,0,0,.45);
-}
-
-.hero__title {
-  margin: 0 0 6px 0;
-  font-size: clamp(22px, 4.5vw, 40px);
-  font-weight: 800;
-}
-
-.hero__meta {
-  margin: 0 0 12px 0;
-  color: var(--muted);
-  display: flex;
-  gap: 16px;
-  font-size: 14px;
-}
-
-.hero__overview {
-  margin: 0 0 16px 0;
-  max-width: 70ch;
-  color: #d2d9e6;
-  font-size: clamp(14px, 2vw, 16px);
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  line-clamp: 4; 
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.hero__cta {
-  display: inline-block;
-  background: color-mix(in oklab, var(--bg-elev) 85%, black);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 14px;
-}
-
-/* Nav arrows */
-.hero__nav {
-  position: absolute;
-  top: 50%;
-  translate: 0 -50%;
-  z-index: 2;
-  border: 1px solid var(--border);
-  background: color-mix(in oklab, var(--bg-elev) 88%, black);
-  color: var(--text);
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: border-color .2s ease, background .2s ease, transform .1s ease;
-}
-.hero__nav:hover { border-color: color-mix(in oklab, var(--accent) 40%, var(--border)); }
-.hero__nav.prev { left: 18px; }
-.hero__nav.next { right: 18px; }
-
-/* Slide transition */
-.hero-fade-enter-from,
-.hero-fade-leave-to { opacity: 0; filter: saturate(0.7) blur(2px); transform: scale(1.01); }
-.hero-fade-enter-active,
-.hero-fade-leave-active { transition: opacity .6s ease, filter .6s ease, transform .6s ease; }
-
-/* Spacing for section below */
-.below { margin-top: 28px; }
-
-/* Load More styles (dark, rounded, responsive) */
-.load-more {
-  display: grid;
-  place-items: center;
-  margin: 20px 0 8px;
-}
-
-.btn-load {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: color-mix(in oklab, var(--bg-elev) 90%, black);
-  color: var(--text);
-  padding: 12px 18px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: border-color .2s ease, box-shadow .2s ease, transform .1s ease, background .2s ease;
-  box-shadow: 0 6px 18px rgba(0,0,0,.25);
-}
-.btn-load:hover:not(:disabled) {
-  border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
-  box-shadow: 0 10px 24px rgba(0,0,0,.35);
-}
-.btn-load:disabled { opacity: .65; cursor: default; }
-
-/* Minimal spinner */
-.spinner {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 2px solid color-mix(in oklab, var(--muted) 60%, transparent);
-  border-top-color: var(--accent);
-  animation: spin .7s linear infinite;
-  display: inline-block;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Completion message */
-.end-hint {
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 14px;
-  text-align: center;
-}
-
-/* Mobile */
-@media (max-width: 640px) {
-  .hero__overview { -webkit-line-clamp: 5; line-clamp: 5; }
-}
-
-.infinite-sentinel {
-  width: 100%;
-  height: 1px; /* minimal footprint */
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/index.scss"></style>

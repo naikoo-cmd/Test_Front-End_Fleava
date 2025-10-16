@@ -15,7 +15,7 @@ export default eventHandler(async (event: H3Event) => {
     query: {
       api_key: config.tmdbApiKey as string,
       language: 'en-US',
-      append_to_response: 'credits,external_ids' // added to return full data in one response
+      append_to_response: 'credits,external_ids' // added to return full data
     }
   })
 

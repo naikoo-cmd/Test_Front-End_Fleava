@@ -20,7 +20,7 @@
           <!-- New two-column layout -->
           <div class="poster-column">
             <!-- Poster (left column) -->
-            <img class="poster" :src="posterUrl" :alt="movie.title" />
+            <img class="poster" :src="posterUrl" :alt="movie.title" @error="onPosterError" />
 
             <!-- Genres/Duration/Rating directly UNDER the poster -->
             <section class="details__extras" v-if="movie">
@@ -106,7 +106,7 @@
                 <h2>Top Billed Cast</h2>
                 <div class="cast__scroller">
                   <div v-for="p in topCast" :key="p.id" class="cast__card">
-                    <img :src="profileUrl(p.profile_path)" :alt="p.name" loading="lazy" />
+                    <img :src="profileUrl(p.profile_path)" :alt="p.name" loading="lazy" @error="onProfileError" />
                     <p class="name">{{ p.name }}</p>
                     <p class="character" v-if="p.character">{{ p.character }}</p>
                   </div>
@@ -165,7 +165,7 @@ const movie = computed(() => data.value as MovieDetails | null)
 const posterUrl = computed(() =>
   movie.value?.poster_path
     ? `${pub.tmdbImageBase}${movie.value.poster_path}`
-    : 'https://via.placeholder.com/500x750?text=No+Image'
+    : '/placeholder-poster.svg'
 )
 
 // Background: choose backdrop or poster;
@@ -204,7 +204,19 @@ const certification = computed(() => {
 })
 
 function profileUrl(path?: string | null) {
-  return path ? `${pub.tmdbImageBase}${path}` : 'https://via.placeholder.com/300x450?text=No+Image'
+  return path ? `${pub.tmdbImageBase}${path}` : '/placeholder-profile.svg'
+}
+const FALLBACK_POSTER = '/placeholder-poster.svg'
+const FALLBACK_PROFILE = '/placeholder-profile.svg'
+function onPosterError(e: Event) {
+  const el = e.target as HTMLImageElement | null
+  if (!el || el.src.endsWith(FALLBACK_POSTER)) return
+  el.src = FALLBACK_POSTER
+}
+function onProfileError(e: Event) {
+  const el = e.target as HTMLImageElement | null
+  if (!el || el.src.endsWith(FALLBACK_PROFILE)) return
+  el.src = FALLBACK_PROFILE
 }
 function formatMoney(n?: number) {
   if (!n || n <= 0) return '—'
@@ -216,257 +228,4 @@ function goBack() {
 }
 </script>
 
-<style scoped lang="scss">
-
-.details__bg-root {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-}
-.details__bg {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed; 
-  filter: blur(24px) saturate(1.05);
-  transform: scale(1.12);
-  opacity: 0;
-  transition: opacity .6s ease;
-}
-.details__bg.is-visible { opacity: 1; }
-
-/* Keep backdrop image unchanged (no theme recolor) */
-.details__bg {
-  background-blend-mode: normal;
-  filter: blur(24px) saturate(1.05);
-}
-
-.details__overlay {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.65) 40%, rgba(0,0,0,0.85) 100%),
-    radial-gradient(60% 60% at 20% 35%, rgba(0,0,0,0.35), rgba(0,0,0,0) 70%);
-}
-
-/* Back button */
-.back {
-  margin: 16px 0;
-  border: 1px solid var(--border);
-  background: var(--bg-elev);
-  color: var(--text);
-  padding: 8px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: border-color .2s ease, background .2s ease;
-}
-.back:hover {
-  border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
-}
-
-/* Error message */
-.error {
-  margin: 40px 0;
-  padding: 16px;
-  border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--border));
-  border-radius: 10px;
-  background: rgba(255, 0, 0, 0.1);
-  color: var(--text);
-  text-align: center;
-}
-
-/* Two-column layout: left (poster + genres), right (details) */
-.details__content {
-  display: grid;
-  grid-template-columns: 340px 1fr; /* desktop */
-  gap: 28px;
-  align-items: start;
-}
-
-.poster-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px; /* space between poster and genres */
-  min-width: 0; /* avoid overflow */
-}
-.details-column {
-  min-width: 0; /* allow text to wrap nicely */
-}
-
-/* Ensure the genres block sits snug under the poster */
-.poster-column .details__extras {
-  margin-top: 0; /* override any larger top margin */
-}
-
-/* Genre badges: compact rounded tags */
-.details__extras .badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.details__extras .badge {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--bg-elev) 85%, black);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 12px;
-}
-
-/* Poster */
-.poster {
-  width: 100%;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: #0e141d;
-}
-
-/* New: Genres / Duration / Rating below poster */
-.details__extras {
-  margin-top: 14px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
-  display: grid;
-  gap: 10px;
-}
-.details__extras .badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.details__extras .badge {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--bg-elev) 85%, black);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 12px;
-}
-.details__extras .extras__rows {
-  display: grid;
-  gap: 8px;
-}
-.details__extras .extra {
-  display: grid;
-  grid-template-columns: 100px 1fr;
-  align-items: center;
-  gap: 8px;
-}
-.details__extras .label { color: var(--muted); font-size: 12px; }
-.details__extras .value { color: var(--text); font-size: 14px; }
-@media (max-width: 980px) {
-  .details__extras { margin-top: 10px; }
-  .details__extras .extra { grid-template-columns: 90px 1fr; }
-}
-
-/* Info */
-.info .title {
-  margin: 0 0 8px 0;
-}
-.info .title .original {
-  color: var(--muted);
-  font-weight: 400;
-  margin-left: 6px;
-}
-.meta {
-  margin: 0 0 14px 0;
-  color: var(--muted);
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-.overview {
-  margin: 0 0 18px 0;
-  color: #d2d9e6;
-}
-
-/* Facts grid */
-.facts {
-  display: grid;
-  gap: 10px;
-  margin: 18px 0 10px;
-}
-.fact {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 10px;
-  align-items: center;
-}
-.fact .label { color: var(--muted); }
-.fact .value { color: var(--text); }
-.fact .link {
-  text-decoration: none;
-  padding: 2px 0;
-  border-bottom: 1px dashed color-mix(in oklab, var(--accent) 60%, var(--border));
-}
-.socials__links {
-  display: inline-flex;
-  gap: 10px;
-}
-.socials__links a {
-  border: 1px solid var(--border);
-  background: var(--bg-elev);
-  color: var(--text);
-  padding: 6px 10px;
-  border-radius: 10px;
-  text-decoration: none;
-  transition: border-color .2s ease, background .2s ease;
-}
-.socials__links a:hover {
-  border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
-}
-
-/* Cast scroller */
-.cast { margin-top: 22px; }
-.cast h2 { margin: 0 0 10px 0; font-size: 18px; }
-.cast__scroller {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 140px;
-  gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  scroll-snap-type: x mandatory;
-}
-.cast__scroller::-webkit-scrollbar { height: 8px; }
-.cast__scroller::-webkit-scrollbar-thumb { background: #1a2636; border-radius: 999px; }
-.cast__card {
-  scroll-snap-align: start;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.cast__card img {
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  display: block;
-  background: #0e141d;
-}
-.cast__card .name { margin: 8px 8px 2px 8px; font-size: 14px; color: var(--text); transition: color .5s ease-in-out; }
-.cast__card .character { margin: 0 8px 10px 8px; color: var(--muted); font-size: 12px; transition: color .5s ease-in-out; }
-
-/* Page enter/leave */
-.fade-up-enter-from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
-.fade-up-enter-active,
-.fade-up-leave-active { transition: opacity .35s ease, transform .35s ease, filter .35s ease; }
-.fade-up-leave-to { opacity: 0; transform: translateY(-6px); filter: blur(2px); }
-
-/* Responsive */
-@media (max-width: 980px) {
-  .details__content { grid-template-columns: 1fr; }
-}
-@media (max-width: 768px) {
-  .details__content {
-    grid-template-columns: 1fr;
-    gap: 18px;
-  }
-  .poster-column { order: 1; }
-  .details-column { order: 2; }
-}
-</style>
+<style scoped lang="scss" src="@/assets/styles/details.scss"></style>

@@ -10,7 +10,9 @@ export default eventHandler(async (event: H3Event) => {
   const q = getQuery(event)
   const rawCategory = (q.category as string) || 'popular'
   const pageParam = parseInt((q.page as string) || '1', 10)
-  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1
+  const parsedPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1
+  // TMDb list endpoints generally cap at 500 pages
+  const page = Math.min(Math.max(parsedPage, 1), 500)
 
   // Map allowed categories to TMDb endpoints
   const allowed: Record<string, string> = {

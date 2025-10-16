@@ -1,66 +1,100 @@
-# testing_FE_Fleava
+# Frontend Testing Project
 
-A compact Nuxt 3 + TypeScript application built for the Fleava front‑end technical test.  
-It showcases a movie listing with a slideshow, infinite scrolling grid, and a details view.  
-A mock API lives under `server/api/movies` to simulate server endpoints.
+Welcome to the **Frontend Testing Project** repository!  
+This repository contains the result of a frontend technical test. It is intended to demonstrate coding skills, code structure, UI implementation, and API integration to the development team or reviewers.
 
-## Technologies
-- Nuxt 3 (Vue 3, Vite, Nitro)
-- TypeScript
-- SCSS (modular, responsive styles)
-- Nuxt Server API routes (`server/api`)
-- Composition API (`<script setup>`, `useAsyncData`)
+## Project Overview
 
-## Project Structure
-```
-app/
-  assets/           # Global styles (SCSS)
-  components/       # Reusable UI (e.g., MovieCard, Navbar)
-  layouts/          # Default layout
-  pages/
-    index.vue       # Home (slideshow + movie grid)
-    movie/[id].vue  # Movie details
-public/             # Static assets
-server/
-  api/
-    movies/
-      popular.get.ts
-      [id].get.ts   # Mock endpoints for movies
-nuxt.config.ts
-```
+This project is built using modern frontend technologies and demonstrates best practices in your chosen framework (e.g., Vue, React, etc.). The main features include:
 
-## Setup
+- Fetching movie data from The Movie Database (TMDB) API.
+- Displaying movie lists, details, and other related information.
+- Responsive and clean UI design.
+- Well-organized and maintainable code structure.
 
-1) Clone the repository
+## Demo
+
+You can run and test this project locally by following the instructions below.
+
+## Getting Started
+
+### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/naikoo-cmd/testing_FE_Fleava.git
 cd testing_FE_Fleava
 ```
 
-2) Install dependencies
+### 2. Install Dependencies
+
+Make sure you have [Node.js](https://nodejs.org/) installed.
+
 ```bash
 npm install
 ```
 
-3) Environment variables
-```bash
-cp .env.example .env
-# If required, add TMDB_API_KEY=<your_key> to .env
-```
+### 3. Setup Environment Variables
 
-4) Run the development server
+This project requires a TMDB API key.  
+You can find a sample configuration in the provided `.env.example` file.
+
+- Copy `.env.example` to `.env`:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+- Open `.env` and replace `YOUR_TMDB_API_KEY` with your own API key.  
+  You can [sign up for a free API key here](https://www.themoviedb.org/settings/api).
+
+Alternatively, you may use the default key provided if available, but it is recommended to use your own for full functionality.
+
+### 4. Run the Development Server
+
 ```bash
 npm run dev
-# http://localhost:3000
 ```
 
-## Features
-- Slideshow hero section for featured movies
-- Infinite scroll movie grid (compact, responsive cards)
-- Movie details with poster, genres, runtime, rating, overview, director, and cast
-- Smooth page transitions and subtle section animations
-- Mock server API routes under `server/api/movies`
+The app will be available at [http://localhost:3000](http://localhost:3000) (or the port specified in your `.env`).
 
 ## Notes
-- This repository is provided solely for front‑end testing purposes (Fleava technical test).
-- API endpoints are mocked/adapted within `server/api/movies`; external keys may be required depending on your setup.
+
+- **TMDB API Usage:**  
+  All movie data is fetched from [The Movie Database (TMDB)](https://www.themoviedb.org/). Please ensure your API key is valid.
+- **Environment Variables:**  
+  All sensitive or runtime configuration is managed via environment variables. Check `.env.example` for the required variables.
+- **Customization:**  
+  Feel free to use your own TMDB API key or modify the project as needed for further testing or feature implementation.
+
+## Folder Structure
+
+```
+app/
+  assets/
+    styles/      # SCSS files for global and component styling
+  components/    # Reusable UI components
+  layouts/       # Layout components and wrappers
+  pages/         # Application pages/views
+  plugins/       # API calls, plugin logic (including TMDB integration)
+  ...
+public/          # Static assets (images, favicon, etc.)
+server/
+  api/
+    movies/      # Server-side API endpoints for movie data handling
+```
+
+## Testing
+
+If there are test scripts available, you can run:
+
+```bash
+npm run test
+```
+
+## Feedback
+
+If you have any questions, suggestions, or need further clarification, please feel free to open an issue or contact me directly.
+
+---
+
+Thank you for reviewing this frontend test project!

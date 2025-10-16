@@ -22,7 +22,7 @@ You can run and test this project locally by following the instructions below.
 
 ```bash
 git clone https://github.com/naikoo-cmd/Test_Front-End_Fleava
-cd testing_FE_Fleava
+cd Test_Front-End_Fleava
 ```
 
 ### 2. Install Dependencies

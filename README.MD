@@ -5,7 +5,7 @@ This repository contains the result of a frontend technical test. It is intended
 
 ## Project Overview
 
-This project is built using modern frontend technologies and demonstrates best practices in your chosen framework (e.g., Vue, React, etc.). The main features include:
+This project is built using modern frontend technologies and demonstrates best practices in your chosen framework (e.g., Vue, Nuxt, etc.). The main features include:
 
 - Fetching movie data from The Movie Database (TMDB) API.
 - Displaying movie lists, details, and other related information.
@@ -75,7 +75,7 @@ app/
   components/    # Reusable UI components
   layouts/       # Layout components and wrappers
   pages/         # Application pages/views
-  plugins/       # API calls, plugin logic (including TMDB integration)
+  plugins/       # Animate
   ...
 public/          # Static assets (images, favicon, etc.)
 server/

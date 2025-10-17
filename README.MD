@@ -30,7 +30,7 @@ cd Test_Front-End_Fleava
 Make sure you have [Node.js](https://nodejs.org/) installed.
 
 ```bash
-npm install
+npm install nuxt@latest
 ```
 
 ### 3. Setup Environment Variables

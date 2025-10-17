@@ -100,5 +100,4 @@ If you have any questions, suggestions, or need further clarification, please fe
 
 ---
 
-
-~~Thank you for reviewing this frontend test project!
+~~Thank you for reviewing this frontend test project!~~

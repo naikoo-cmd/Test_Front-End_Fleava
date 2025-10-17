@@ -3,6 +3,9 @@
 Welcome to the **Frontend Testing Project** repository!  
 This repository contains the result of a frontend technical test. It is intended to demonstrate coding skills, code structure, UI implementation, and API integration to the development team or reviewers.
 
+> This project was not continued because it uses Nuxt 4, which doesn’t meet the required test version. However, I uploaded it to my repository list for reference.
+
+
 ## Project Overview
 
 This project is built using modern frontend technologies and demonstrates best practices in your chosen framework (e.g., Vue, Nuxt, etc.). The main features include:
@@ -97,4 +100,6 @@ If you have any questions, suggestions, or need further clarification, please fe
 
 ---
 
-Thank you for reviewing this frontend test project!
+<p align="center">
+  <em>Thank you for reviewing this frontend test project!</em>
+</p>

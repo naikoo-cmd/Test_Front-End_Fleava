@@ -100,6 +100,5 @@ If you have any questions, suggestions, or need further clarification, please fe
 
 ---
 
-<p align="center">
-  <em>Thank you for reviewing this frontend test project!</em>
-</p>
+
+~~Thank you for reviewing this frontend test project!
